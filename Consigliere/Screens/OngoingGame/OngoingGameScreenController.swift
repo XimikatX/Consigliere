@@ -32,6 +32,8 @@ class OngoingGameScreenController: UIViewController {
     
     private var selectedIndexPath: IndexPath?
     
+    private let timerView = TimerView()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -63,13 +65,30 @@ class OngoingGameScreenController: UIViewController {
     
     private func constrainSubviews() {
         playerTable.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(playerTable)
+
         NSLayoutConstraint.activate([
             playerTable.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            playerTable.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
             playerTable.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             playerTable.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            playerTable.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+
+        playerTable.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 220, right: 0)
+
+        timerView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(timerView)
+
+        NSLayoutConstraint.activate([
+            timerView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            timerView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            timerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            timerView.heightAnchor.constraint(equalToConstant: 200)
+        ])
+        
+        view.bringSubviewToFront(timerView)
     }
+
     
 }
 

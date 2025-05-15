@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import UserNotifications
+
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
@@ -15,17 +17,25 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         _ scene: UIScene, willConnectTo session: UISceneSession,
         options connectionOptions: UIScene.ConnectionOptions
     ) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+                    if let error = error {
+                        print("Notification permission error: \(error)")
+                    }
+        }
         guard let windowScene = (scene as? UIWindowScene) else { return }
         
         let navController = UINavigationController(rootViewController: HomeScreenController())
         navController.navigationBar.prefersLargeTitles = true
-        navController.pushViewController(OngoingGameScreenController(), animated: false)
+//        navController.pushViewController(OngoingGameScreenController(), animated: false)
         
         window = UIWindow(frame: windowScene.coordinateSpace.bounds)
         window?.windowScene = windowScene
         window?.rootViewController = navController
         window?.makeKeyAndVisible()
+
     }
+
+
 
 }
 

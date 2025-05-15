@@ -91,6 +91,9 @@ class PlayerCell: UITableViewCell {
     
     private func constrainViews() {
         
+        let heightConstraint = numberBadge.heightAnchor.constraint(equalToConstant: 26)
+            heightConstraint.priority = .defaultHigh
+        
         mainStack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             // nicknameLabel.heightAnchor.constraint(equalToConstant: 28),
@@ -100,7 +103,8 @@ class PlayerCell: UITableViewCell {
             mainStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             // button.heightAnchor.constraint(equalToConstant: 50),
             numberBadge.widthAnchor.constraint(equalToConstant: 26),
-            numberBadge.heightAnchor.constraint(equalToConstant: 26),
+//          numberBadge.heightAnchor.constraint(equalToConstant: 26),
+            heightConstraint
         ])
         
     }

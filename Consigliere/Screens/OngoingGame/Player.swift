@@ -11,9 +11,12 @@ enum Role {
     case citizen, mafia, don, sheriff
 }
 
-struct PLayer {
+struct Player {
+    let index: Int
     let nickname: String
     let role: Role
+    let isAlive: Bool = true
     var foulsCount: Int = 0
-    var muted: Bool = false
+    var isMuted: Bool = false
+    var hasTechFoul: Bool = false
 }

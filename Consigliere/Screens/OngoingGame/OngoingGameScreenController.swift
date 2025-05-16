@@ -12,13 +12,22 @@ let playerNicknames = [
     "Ferret", "Elephant", "Octopus", "Penguin", "Chinchilla"
 ]
 
+// protocol OngoingGameDataStore {
+//
+// }
+
+// class OngoingGameJsonStore : OngoingGameDS
+
 final class OngoingGameScreenController: UIViewController {
+    
+    private var players: [Player] = playerNicknames.enumerated().map { index, nickname in
+        Player(index: index, nickname: nickname, role: .citizen, foulsCount: index % 4)
+    }
     
     private let playerTable: UITableView = {
         let tableView = UITableView()
         tableView.register(PlayerCell.self, forCellReuseIdentifier: PlayerCell.id)
         tableView.separatorInset = .zero
-        tableView.rowHeight = UITableView.automaticDimension
         return tableView
     }()
     
@@ -63,10 +72,15 @@ extension OngoingGameScreenController: UITableViewDataSource {
             fatalError("OngoingGameScreenController could not dequeue a PlayerCell.")
         }
 
-        cell.configure(index: indexPath.row, nickname: playerNicknames[indexPath.row])
+        cell.configure(for: players[indexPath.row])
+        cell.delegate = self
         cell.isExpanded = indexPath == selectedIndexPath
 
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return indexPath == selectedIndexPath ? 108 : 56
     }
     
 }
@@ -87,12 +101,39 @@ extension OngoingGameScreenController: UITableViewDelegate {
             selectedIndexPath = indexPath
         }
         
+        // FIXME: This should be done using .reconfigureRows with proper animation
         tableView.reloadRows(at: indexPathsToReload, with: .automatic)
     }
     
 }
 
-
+extension OngoingGameScreenController: PlayerCellDelegate {
+    
+    func assignFoulToPlayer(at index: Int) {
+        players[index].foulsCount += 1
+        UIView.performWithoutAnimation {
+            playerTable.reconfigureRows(at: [.init(row: index, section: 0)])
+        }
+    }
+    
+    func removeFoulFromPlayer(at index: Int) {
+        players[index].foulsCount -= 1
+        if players[index].foulsCount < 3 {
+            players[index].isMuted = false
+        }
+        UIView.performWithoutAnimation {
+            playerTable.reconfigureRows(at: [.init(row: index, section: 0)])
+        }
+    }
+    
+    func toggleMuteForPlayer(at index: Int) {
+        players[index].isMuted.toggle()
+        UIView.performWithoutAnimation {
+            playerTable.reconfigureRows(at: [.init(row: index, section: 0)])
+        }
+    }
+    
+}
 
 
 #Preview {

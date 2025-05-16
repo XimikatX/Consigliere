@@ -11,7 +11,7 @@ class NumberBadge: UIView {
 
     let label: UILabel = {
         let label = UILabel()
-        let fontSize: CGFloat = 20
+        let fontSize: CGFloat = 19
         var font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
         if let descriptor = font.fontDescriptor.withDesign(.rounded) {
             label.font = .init(descriptor: descriptor, size: fontSize)
@@ -33,7 +33,7 @@ class NumberBadge: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        backgroundColor = .black
+        backgroundColor = R.Colors.Label.primary
         clipsToBounds = true
 
         addSubview(label)
@@ -45,13 +45,17 @@ class NumberBadge: UIView {
     }
 
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been    implemented")
+        fatalError("init(coder:) has not been implemented")
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
 
         layer.cornerRadius = min(bounds.width, bounds.height) / 6
+    }
+    
+    override var intrinsicContentSize: CGSize {
+        .init(width: 28, height: 28)
     }
 
 }

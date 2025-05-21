@@ -7,8 +7,11 @@
 
 import Foundation
 
-enum Role : Codable {
-    case citizen, mafia, don, sheriff
+enum Role: String, CaseIterable, Codable {
+    case citizen = "Citizen"
+    case mafia = "Mafia"
+    case don = "Don"
+    case sheriff = "Sheriff"
 }
 
 struct Player : Equatable, Codable {
@@ -20,7 +23,7 @@ struct Player : Equatable, Codable {
     var isMuted: Bool = false
     var hasTechFoul: Bool = false
     
-    init(index: Int, nickname: String) {
+    init(index: Int, nickname: String, role: Role? = nil) {
         self.index = index
         self.nickname = nickname
         self.role = nil

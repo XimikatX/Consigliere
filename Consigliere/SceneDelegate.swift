@@ -19,7 +19,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         
         let navController = UINavigationController(rootViewController: HomeScreenController())
         navController.navigationBar.prefersLargeTitles = true
-        navController.pushViewController(OngoingGameScreenController(), animated: false)
+        
+        let gameStateRepository = UserDefaultsGameStateRepository()
+        gameStateRepository.loadGameState() { result in
+            if (try? result.get()) != nil {
+                let viewModel = OngoingGameViewModel(gameStateRepository: gameStateRepository)
+                navController.pushViewController(OngoingGameScreenController(viewModel: viewModel), animated: false)
+            }
+        }
         
         window = UIWindow(frame: windowScene.coordinateSpace.bounds)
         window?.windowScene = windowScene

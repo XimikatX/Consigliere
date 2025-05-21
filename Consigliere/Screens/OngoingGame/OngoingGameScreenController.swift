@@ -6,22 +6,21 @@
 //
 
 import UIKit
+import Combine
 
-let playerNicknames = [
-    "Tortoise", "Bumblebee With Very Long Nickname Which Won't Fit", "Kangaroo", "Cheetah", "Giraffe",
-    "Ferret", "Elephant", "Octopus", "Penguin", "Chinchilla"
-]
 
-// protocol OngoingGameDataStore {
-//
-// }
-
-// class OngoingGameJsonStore : OngoingGameDS
-
-final class OngoingGameScreenController: UIViewController {
+class OngoingGameScreenController: UIViewController {
     
-    private var players: [Player] = playerNicknames.enumerated().map { index, nickname in
-        Player(index: index, nickname: nickname, role: .citizen, foulsCount: index % 4)
+    private let viewModel: OngoingGameViewModel
+    private var cancellables: Set<AnyCancellable> = []
+    
+    init(viewModel: OngoingGameViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
     
     private let playerTable: UITableView = {
@@ -38,15 +37,31 @@ final class OngoingGameScreenController: UIViewController {
 
         title = "Ongoing Game"
         navigationItem.largeTitleDisplayMode = .never
-        navigationController?.navigationBar.tintColor = .systemIndigo
-        // navigationItem.rightBarButtonItems = [optionsButton, toggleRoleVisibilityButton]
+        navigationController?.navigationBar.tintColor = .brandBlue
         
         view.backgroundColor = .systemBackground
         
+        viewModel.$gameState
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] gameState in
+                guard let self else { return }
+                if gameState == nil {
+                    navigationController?.popViewController(animated: true)
+                }
+            }
+            .store(in: &cancellables)
+        
+        setupSubviews()
+        constrainSubviews()
+    }
+    
+    private func setupSubviews() {
+        view.addSubview(playerTable)
         playerTable.dataSource = self
         playerTable.delegate = self
-        
-        view.addSubview(playerTable)
+    }
+    
+    private func constrainSubviews() {
         playerTable.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             playerTable.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -61,7 +76,7 @@ final class OngoingGameScreenController: UIViewController {
 extension OngoingGameScreenController: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return playerNicknames.count
+        return 10
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -72,8 +87,16 @@ extension OngoingGameScreenController: UITableViewDataSource {
             fatalError("OngoingGameScreenController could not dequeue a PlayerCell.")
         }
 
-        cell.configure(for: players[indexPath.row])
-        cell.delegate = self
+        cell.viewModel = viewModel
+        cell.index = indexPath.row
+        cell.cancellable = viewModel.$gameState
+            .receive(on: DispatchQueue.main)
+            .compactMap { $0 }
+            .map { $0.players[indexPath.row] }
+            .removeDuplicates()
+            .sink { player in
+                cell.configure(for: player)
+            }
         cell.isExpanded = indexPath == selectedIndexPath
 
         return cell
@@ -101,41 +124,7 @@ extension OngoingGameScreenController: UITableViewDelegate {
             selectedIndexPath = indexPath
         }
         
-        // FIXME: This should be done using .reconfigureRows with proper animation
-        tableView.reloadRows(at: indexPathsToReload, with: .automatic)
+        tableView.reconfigureRows(at: indexPathsToReload)
     }
     
-}
-
-extension OngoingGameScreenController: PlayerCellDelegate {
-    
-    func assignFoulToPlayer(at index: Int) {
-        players[index].foulsCount += 1
-        UIView.performWithoutAnimation {
-            playerTable.reconfigureRows(at: [.init(row: index, section: 0)])
-        }
-    }
-    
-    func removeFoulFromPlayer(at index: Int) {
-        players[index].foulsCount -= 1
-        if players[index].foulsCount < 3 {
-            players[index].isMuted = false
-        }
-        UIView.performWithoutAnimation {
-            playerTable.reconfigureRows(at: [.init(row: index, section: 0)])
-        }
-    }
-    
-    func toggleMuteForPlayer(at index: Int) {
-        players[index].isMuted.toggle()
-        UIView.performWithoutAnimation {
-            playerTable.reconfigureRows(at: [.init(row: index, section: 0)])
-        }
-    }
-    
-}
-
-
-#Preview {
-    OngoingGameScreenController()
 }

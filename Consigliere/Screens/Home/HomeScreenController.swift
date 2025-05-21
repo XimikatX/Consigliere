@@ -43,19 +43,11 @@ class HomeScreenController: UIViewController {
     }
 
     @objc func handleNewGame() {
-        // print("New Game button pressed.")
+        let repository = UserDefaultsGameStateRepository()
+        repository.saveGameState(gameState: mockGameState()) { _ in }
+        let viewModel = OngoingGameViewModel(gameStateRepository: repository)
         self.navigationController?.pushViewController(
-            OngoingGameScreenController(), animated: true)
+            OngoingGameScreenController(viewModel: viewModel), animated: true)
     }
 
-}
-
-#Preview {
-    {
-        let navController = UINavigationController(
-            rootViewController: HomeScreenController())
-        navController.navigationBar.prefersLargeTitles = true
-        navController.pushViewController(OngoingGameScreenController(), animated: false)
-        return navController
-    }()
 }

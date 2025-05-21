@@ -6,18 +6,24 @@
 //
 
 import UIKit
+import Combine
+
 
 class PlayerCell: UITableViewCell {
 
     static let id = "PlayerCell"
     
-    var player: Player?
-    var delegate: PlayerCellDelegate?
+    var viewModel: OngoingGameViewModel?
+    var index: Int?
+    var cancellable: AnyCancellable?
     
     var isExpanded: Bool = false {
         didSet {
             bottomRowScrollView.isHidden = !isExpanded
             nominateButton.setTitle(isExpanded ? "Nominate" : "", for: .normal)
+            if isExpanded {
+                bottomRowScrollView.setContentOffset(.zero, animated: false)
+            }
         }
     }
     
@@ -53,33 +59,23 @@ class PlayerCell: UITableViewCell {
     }()
     
     let foulsIcon: UIImageView = {
-        let image = UIImageView()
-        image.contentMode = .scaleAspectFit
-        image.tintColor = .brandBlue
-        return image
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.tintColor = .brandBlue
+        return imageView
     }()
     
-    static let buttonConfig: UIButton.Configuration = {
-        var config = UIButton.Configuration.gray()
-        config.baseForegroundColor = .brandBlue
-        config.baseBackgroundColor = .ghostWhite
-        config.contentInsets = .init(top: 0, leading: 12, bottom: 0, trailing: 12)
-        config.imagePadding = 4
-        config.cornerStyle = .fixed
-        config.preferredSymbolConfigurationForImage =
-            .init(pointSize: 17, weight: .regular, scale: .medium)
-        config.titleTextAttributesTransformer =
-        UIConfigurationTextAttributesTransformer { incoming in
-            var outgoing = incoming
-            outgoing.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
-            return outgoing
-        }
-        return config
+    let techFoulIcon: UIImageView = {
+        let imageView = UIImageView()
+        imageView.image = UIImage(named: "foul.1")?.withRenderingMode(.alwaysTemplate)
+        imageView.contentMode = .scaleAspectFit
+        imageView.tintColor = .imperialRed
+        return imageView
     }()
     
     let nominateButton: UIButton = {
         let button = UIButton(type: .system)
-        var config = buttonConfig
+        var config = UIButton.Configuration.forPlayerCell()
         config.image = UIImage(systemName: "hammer.fill")
         button.configuration = config
         button.layer.cornerRadius = 8
@@ -102,9 +98,9 @@ class PlayerCell: UITableViewCell {
         return stack
     }()
     
-    let profileButton: UIButton = {
+    lazy var profileButton: UIButton = {
         let button = UIButton(type: .system)
-        var config = buttonConfig
+        var config = UIButton.Configuration.forPlayerCell()
         config.image = UIImage(systemName: "person.crop.circle.fill")
         config.title = "Profile"
         button.configuration = config
@@ -116,18 +112,18 @@ class PlayerCell: UITableViewCell {
     lazy var foulsControl: FoulCountControl = {
         let control = FoulCountControl()
         control.onMinusButtonTapped = { [weak self] in
-            guard let self, let player else { return }
-            delegate?.removeFoulFromPlayer(at: player.index)
+            guard let self, let index else { return }
+            viewModel?.removeFoulFromPlayer(at: index)
         }
         control.onPlusButtonTapped = { [weak self] in
-            guard let self, let player else { return }
-            delegate?.assignFoulToPlayer(at: player.index)
+            guard let self, let index else { return }
+            viewModel?.assignFoulToPlayer(at: index)
         }
         return control
     }()
     
     lazy var muteButton: UIButton = {
-        var config = PlayerCell.buttonConfig
+        var config = UIButton.Configuration.forPlayerCell()
         config.image = UIImage(systemName: "microphone.slash.fill")
         config.title = "Mute"
         let button = UIButton(type: .system)
@@ -148,29 +144,47 @@ class PlayerCell: UITableViewCell {
             button.configuration = config
         }
         button.addAction(
-            UIAction(title: "", handler: { [weak self] _ in
-                guard let self, let player else { return }
-                delegate?.toggleMuteForPlayer(at: player.index)
-            }),
+            UIAction(title: "") { [weak self] _ in
+                guard let self, let index else { return }
+                viewModel?.toggleMuteForPlayer(at: index)
+            },
             for: .touchUpInside
         )
         return button
     }()
     
-    let techFoulButton: UIButton = {
+    lazy var techFoulButton: UIButton = {
         let button = UIButton(type: .system)
-        var config = buttonConfig
+        var config = UIButton.Configuration.forPlayerCell()
         config.image = UIImage(systemName: "exclamationmark.circle.fill")
         config.title = "Tech. Foul"
         button.configuration = config
         button.layer.cornerRadius = 8
         button.clipsToBounds = true
+        button.configurationUpdateHandler = { button in
+            var config = button.configuration!
+            if button.state.contains(.selected) {
+                config.background.backgroundColorTransformer = UIConfigurationColorTransformer { _ in
+                    return .imperialRed
+                }
+                config.baseForegroundColor = .white
+            } else {
+                config.background.backgroundColorTransformer = nil
+                config.baseForegroundColor = .brandBlue
+            }
+            button.configuration = config
+        }
+        button.addAction(
+            UIAction(title: "") { [weak self] _ in
+                guard let self, let index else { return }
+                viewModel?.toggleTechFoulForPlayer(at: index)
+            }, for: .touchUpInside)
         return button
     }()
     
-    let disqualifyButton: UIButton = {
+    lazy var disqualifyButton: UIButton = {
         let button = UIButton(type: .system)
-        var config = buttonConfig
+        var config = UIButton.Configuration.forPlayerCell()
         config.image = UIImage(systemName: "door.right.hand.open")
         config.title = "Disqualify"
         config.baseForegroundColor = .imperialRed
@@ -202,6 +216,8 @@ class PlayerCell: UITableViewCell {
         nicknameWithAccessories.addArrangedSubview(nicknameLabel)
         nicknameWithAccessories.setCustomSpacing(8, after: nicknameLabel)
         nicknameWithAccessories.addArrangedSubview(foulsIcon)
+        nicknameWithAccessories.setCustomSpacing(4, after: foulsIcon)
+        nicknameWithAccessories.addArrangedSubview(techFoulIcon)
         topRowStack.addArrangedSubview(nominateButton)
         contentView.addSubview(bottomRowScrollView)
         bottomRowScrollView.addSubview(bottomRowStack)
@@ -238,32 +254,46 @@ class PlayerCell: UITableViewCell {
     }
     
     func configure(for player: Player) {
-        self.player = player
         numberBadge.setNumber(player.index + 1)
         nicknameLabel.text = player.nickname 
         if player.foulsCount > 0 {
-            foulsIcon.image = UIImage(named: "foul.\(player.foulsCount)")?.withRenderingMode(.alwaysTemplate)
             foulsIcon.isHidden = false
+            foulsIcon.image = UIImage(named: "foul.\(player.foulsCount)")?.withRenderingMode(.alwaysTemplate)
         } else {
             foulsIcon.isHidden = true
         }
+        techFoulIcon.isHidden = !player.hasTechFoul
         foulsControl.foulCount = player.foulsCount
         muteButton.isEnabled = player.foulsCount == 3
         muteButton.isSelected = player.isMuted
+        techFoulButton.isSelected = player.hasTechFoul
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
-        bottomRowScrollView.setContentOffset(.zero, animated: false)
+        cancellable = nil
     }
     
 }
 
-//extension NSLayoutConstraint {
-//    
-//    func withPriority(_ priority: UILayoutPriority) -> NSLayoutConstraint {
-//        self.priority = priority
-//        return self
-//    }
-//    
-//}
+extension UIButton.Configuration {
+    
+    static func forPlayerCell() -> UIButton.Configuration {
+        var config = UIButton.Configuration.filled()
+        config.baseForegroundColor = .brandBlue
+        config.baseBackgroundColor = .ghostWhite
+        config.contentInsets = .init(top: 0, leading: 12, bottom: 0, trailing: 12)
+        config.imagePadding = 4
+        config.cornerStyle = .fixed
+        config.preferredSymbolConfigurationForImage =
+            .init(pointSize: 17, weight: .regular, scale: .medium)
+        config.titleTextAttributesTransformer =
+        UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
+            return outgoing
+        }
+        return config
+    }
+    
+}

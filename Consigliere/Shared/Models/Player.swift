@@ -7,16 +7,23 @@
 
 import Foundation
 
-enum Role {
+enum Role : Codable {
     case citizen, mafia, don, sheriff
 }
 
-struct Player {
+struct Player : Equatable, Codable {
     let index: Int
     let nickname: String
-    let role: Role
-    let isAlive: Bool = true
+    let role: Role?
+    let isAlive: Bool
     var foulsCount: Int = 0
     var isMuted: Bool = false
     var hasTechFoul: Bool = false
+    
+    init(index: Int, nickname: String) {
+        self.index = index
+        self.nickname = nickname
+        self.role = nil
+        self.isAlive = true
+    }
 }

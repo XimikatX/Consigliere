@@ -9,6 +9,17 @@ import UIKit
 
 class HomeScreenController: UIViewController {
     
+    let nicknames: [String]
+    
+    init(nicknames: [String]) {
+        self.nicknames = nicknames
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
     private let newGameButton: UIButton = {
         let button = UIButton()
         button.configuration = {
@@ -43,11 +54,16 @@ class HomeScreenController: UIViewController {
     }
 
     @objc func handleNewGame() {
-        let repository = UserDefaultsGameStateRepository()
-        repository.saveGameState(gameState: mockGameState()) { _ in }
-        let viewModel = OngoingGameViewModel(gameStateRepository: repository)
-        self.navigationController?.pushViewController(
-            OngoingGameScreenController(viewModel: viewModel), animated: true)
+//        let repository = UserDefaultsGameStateRepository()
+//        repository.saveGameState(gameState: mockGameState()) { _ in }
+//        let viewModel = OngoingGameViewModel(gameStateRepository: repository)
+//        self.navigationController?.pushViewController(
+//            OngoingGameScreenController(viewModel: viewModel), animated: true)
+    
+        let navVC = UINavigationController(rootViewController: NewGameScreenController())
+        present(navVC, animated: true)
+
     }
 
 }
+

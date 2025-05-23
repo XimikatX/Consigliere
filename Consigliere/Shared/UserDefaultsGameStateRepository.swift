@@ -16,7 +16,6 @@ class UserDefaultsGameStateRepository : GameStateRepository {
             let decoder = JSONDecoder()
             do {
                 let gameState = try decoder.decode(GameState.self, from: data)
-                print("Successully decoded")
                 completion(.success(gameState))
             } catch {
                 completion(.failure(error))
@@ -31,7 +30,6 @@ class UserDefaultsGameStateRepository : GameStateRepository {
         let encoder = JSONEncoder()
         do {
             let data = try encoder.encode(gameState)
-            print("Successfully encoded")
             UserDefaults.standard.set(data, forKey: gameStateKey)
             completion(.success(()))
         } catch {

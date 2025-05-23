@@ -9,7 +9,7 @@ import UIKit
 import Combine
 
 
-class OngoingGameScreenController: UIViewController {
+class OngoingGameViewController: UIViewController {
     
     private let viewModel: OngoingGameViewModel
     private var cancellables: Set<AnyCancellable> = []
@@ -65,8 +65,6 @@ class OngoingGameScreenController: UIViewController {
     
     private func constrainSubviews() {
         playerTable.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(playerTable)
-
         NSLayoutConstraint.activate([
             playerTable.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             playerTable.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -92,7 +90,7 @@ class OngoingGameScreenController: UIViewController {
     
 }
 
-extension OngoingGameScreenController: UITableViewDataSource {
+extension OngoingGameViewController: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return 10
@@ -127,7 +125,7 @@ extension OngoingGameScreenController: UITableViewDataSource {
     
 }
 
-extension OngoingGameScreenController: UITableViewDelegate {
+extension OngoingGameViewController: UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         var indexPathsToReload: [IndexPath] = []

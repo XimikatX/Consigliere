@@ -24,7 +24,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
         guard let windowScene = (scene as? UIWindowScene) else { return }
         
-        let navController = UINavigationController(rootViewController: HomeScreenController(nicknames: []))
+        let navController = UINavigationController(rootViewController: HomeScreenController())
         navController.navigationBar.prefersLargeTitles = true
 
         // navController.pushViewController(OngoingGameScreenController(), animated: false)
@@ -32,8 +32,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let gameStateRepository = UserDefaultsGameStateRepository()
         gameStateRepository.loadGameState() { result in
             if (try? result.get()) != nil {
-                let viewModel = OngoingGameViewModel(gameStateRepository: gameStateRepository)
-                navController.pushViewController(OngoingGameScreenController(viewModel: viewModel), animated: false)
+                let viewModel = OngoingGameViewModel(repository: gameStateRepository)
+                navController.pushViewController(OngoingGameViewController(viewModel: viewModel), animated: false)
             }
         }
 

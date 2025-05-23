@@ -9,18 +9,9 @@ import UIKit
 
 class HomeScreenController: UIViewController {
     
-    let nicknames: [String]
+    private var newGameCoordinator: NewGameCoordinator?
     
-    init(nicknames: [String]) {
-        self.nicknames = nicknames
-        super.init(nibName: nil, bundle: nil)
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    private let newGameButton: UIButton = {
+    private lazy var newGameButton: UIButton = {
         let button = UIButton()
         button.configuration = {
             var configuration = UIButton.Configuration.filled()
@@ -29,6 +20,7 @@ class HomeScreenController: UIViewController {
             configuration.imagePadding = 4.0
             return configuration
         }()
+        button.addTarget(self, action: #selector(onNewGameTapped), for: .touchUpInside)
         button.tintColor = .systemIndigo
         return button
     }()
@@ -38,12 +30,11 @@ class HomeScreenController: UIViewController {
 
         self.title = "Home"
         self.navigationItem.largeTitleDisplayMode = .always
-
         view.backgroundColor = .systemBackground
-        view.addSubview(newGameButton)
-        newGameButton.addTarget(self, action: #selector(handleNewGame), for: .touchUpInside)
-        newGameButton.translatesAutoresizingMaskIntoConstraints = false
         
+        view.addSubview(newGameButton)
+    
+        newGameButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             newGameButton.widthAnchor.constraint(equalToConstant: 200),
             newGameButton.heightAnchor.constraint(equalToConstant: 50),
@@ -53,15 +44,31 @@ class HomeScreenController: UIViewController {
 
     }
 
-    @objc func handleNewGame() {
-//        let repository = UserDefaultsGameStateRepository()
-//        repository.saveGameState(gameState: mockGameState()) { _ in }
-//        let viewModel = OngoingGameViewModel(gameStateRepository: repository)
-//        self.navigationController?.pushViewController(
-//            OngoingGameScreenController(viewModel: viewModel), animated: true)
+    @objc func onNewGameTapped() {
     
-        let navVC = UINavigationController(rootViewController: NewGameScreenController())
-        present(navVC, animated: true)
+        let navController = UINavigationController()
+        let coordinator = NewGameCoordinator(navController: navController)
+        
+        coordinator.onCancel = { [weak self] in
+            self?.dismiss(animated: true) {
+                self?.newGameCoordinator = nil
+            }
+        }
+        coordinator.onStartGame = { [weak self] players in
+            self?.dismiss(animated: true) {
+                // FIXME: This doesn't animate simultaneously
+                let gameStateRepository = UserDefaultsGameStateRepository()
+                gameStateRepository.saveGameState(gameState: GameState(players: players)) { _ in }
+                let ongoingGameVC = OngoingGameViewController(
+                    viewModel: OngoingGameViewModel(repository: gameStateRepository))
+                self?.navigationController?.pushViewController(ongoingGameVC, animated: true)
+                self?.newGameCoordinator = nil
+            }
+        }
+        
+        newGameCoordinator = coordinator
+        coordinator.start()
+        present(navController, animated: true)
 
     }
 

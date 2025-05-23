@@ -271,6 +271,7 @@ class PlayerCell: UITableViewCell {
     
     override func prepareForReuse() {
         super.prepareForReuse()
+        cancellable?.cancel()
         cancellable = nil
     }
     

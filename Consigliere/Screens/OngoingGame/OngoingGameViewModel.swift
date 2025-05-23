@@ -13,8 +13,8 @@ class OngoingGameViewModel {
     
     @Published var gameState: GameState?
     
-    init(gameStateRepository: GameStateRepository) {
-        self.gameStateRepository = gameStateRepository
+    init(repository: GameStateRepository) {
+        gameStateRepository = repository
         gameStateRepository.loadGameState { [weak self] result in
             guard let self else { return }
             gameState = try? result.get()

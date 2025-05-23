@@ -1,20 +1,21 @@
 import UIKit
 
-protocol PlayerInputCellDelegate: AnyObject {
-    func playerInputCell(_ cell: PlayerInputCell, didChangeText text: String)
-}
 
-class PlayerInputCell: UITableViewCell {
+class PlayerInputCell: UITableViewCell, UITextFieldDelegate {
     
     static let id = "PlayerInputCell"
     
+    var index: Int?
     weak var delegate: PlayerInputCellDelegate?
     
     let numberBadge = NumberBadge()
     
-    let nicknameTextField: UITextField = {
+    lazy var nicknameField: UITextField = {
         let textField = UITextField()
+        textField.delegate = self
         textField.placeholder = "Nickname"
+        textField.addTarget(self, action: #selector(textDidChange), for: .editingChanged)
+        textField.returnKeyType = .done
         return textField
     }()
     
@@ -23,40 +24,56 @@ class PlayerInputCell: UITableViewCell {
         
         selectionStyle = .none
         
-        contentView.addSubview(numberBadge)
-        numberBadge.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            numberBadge.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            numberBadge.widthAnchor.constraint(equalToConstant: 28),
-            numberBadge.heightAnchor.constraint(equalToConstant: 28),
-            numberBadge.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
-        
-        contentView.addSubview(nicknameTextField)
-        nicknameTextField.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            nicknameTextField.leadingAnchor.constraint(equalTo: numberBadge.trailingAnchor, constant: 12),
-            nicknameTextField.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            nicknameTextField.centerYAnchor.constraint(equalTo: centerYAnchor),
-            nicknameTextField.heightAnchor.constraint(equalToConstant: 32)
-        ])
-        
-        nicknameTextField.addTarget(self, action: #selector(textDidChange), for: .editingChanged)
+        setupSubviews()
+        constrainSubviews()
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func configure(forIndex index: Int, delegate: UITextFieldDelegate & PlayerInputCellDelegate) {
+    func setupSubviews() {
+        contentView.addSubview(numberBadge)
+        contentView.addSubview(nicknameField)
+    }
+    
+    func constrainSubviews() {
+        numberBadge.translatesAutoresizingMaskIntoConstraints = false
+        nicknameField.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            numberBadge.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            numberBadge.widthAnchor.constraint(equalToConstant: 28),
+            numberBadge.heightAnchor.constraint(equalToConstant: 28),
+            numberBadge.centerYAnchor.constraint(equalTo: centerYAnchor),
+            nicknameField.leadingAnchor.constraint(equalTo: numberBadge.trailingAnchor, constant: 12),
+            nicknameField.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            nicknameField.centerYAnchor.constraint(equalTo: centerYAnchor),
+            nicknameField.heightAnchor.constraint(equalToConstant: 32)
+        ])
+    }
+    
+    func configure(forIndex index: Int) {
+        self.index = index
         numberBadge.setNumber(index + 1)
-        nicknameTextField.tag = index
-        nicknameTextField.delegate = delegate
-        self.delegate = delegate
-        nicknameTextField.returnKeyType = index + 1 < 10 ? .next : .done
     }
     
     @objc private func textDidChange() {
-        delegate?.playerInputCell(self, didChangeText: nicknameTextField.text ?? "")
+        guard let delegate, let index else { return }
+        delegate.nicknameFieldTextDidChange(to: nicknameField.text ?? "", for: index)
     }
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        guard let delegate, let index else { return true }
+        if delegate.nicknameFieldShouldReturn(for: index) {
+            textField.resignFirstResponder()
+        }
+        return false
+    }
+    
 }
+
+protocol PlayerInputCellDelegate : AnyObject {
+    func nicknameFieldTextDidChange(to nickname: String, for index: Int)
+    func nicknameFieldShouldReturn(for index: Int) -> Bool
+}
+    

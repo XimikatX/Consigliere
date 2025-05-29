@@ -12,6 +12,7 @@ class OngoingGameViewModel {
     private let gameStateRepository: GameStateRepository
     
     @Published var gameState: GameState?
+
     
     init(repository: GameStateRepository) {
         gameStateRepository = repository
@@ -40,5 +41,13 @@ class OngoingGameViewModel {
         gameState?.toggleTechFoulForPlayer(at: index)
         gameStateRepository.saveGameState(gameState: gameState!) { _ in }
     }
+    
+    func advancePhase() {
+        guard var state = gameState else { return }
+        state.advancePhase()
+        gameState = state
+    }
+
+
     
 }

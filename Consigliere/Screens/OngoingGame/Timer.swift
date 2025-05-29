@@ -204,6 +204,10 @@ final class TimerView: UIView {
         }
         RunLoop.main.add(timer!, forMode: .common)
     }
+    
+    func setSpeechLabel(text: String) {
+        speechLabel.text = text
+    }
 
     
     private func scheduleTimerFinishedNotification(at date: Date) {

@@ -1,28 +1,11 @@
-//
-//  OngoingGameScreenControllerViewController.swift
-//  Consigliere
-//
-//  Created by Aleksey Boris on 16/04/2025.
-//
-
 import UIKit
 import Combine
-
 
 class OngoingGameViewController: UIViewController {
     
     private let viewModel: OngoingGameViewModel
     private var cancellables: Set<AnyCancellable> = []
-    
-    init(viewModel: OngoingGameViewModel) {
-        self.viewModel = viewModel
-        super.init(nibName: nil, bundle: nil)
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
+
     private let playerTable: UITableView = {
         let tableView = UITableView()
         tableView.register(PlayerCell.self, forCellReuseIdentifier: PlayerCell.id)
@@ -31,18 +14,45 @@ class OngoingGameViewController: UIViewController {
     }()
     
     private var selectedIndexPath: IndexPath?
+
     
-    private let timerView = TimerView()
+    private lazy var bottomSheet = BottomSheetView()
+    private let bottomSheetViewModel = BottomSheetViewModel()
+    private lazy var bottomSheetVC = BottomSheetViewController(viewModel: bottomSheetViewModel)
+
+
+    // MARK: - Init
     
+    init(viewModel: OngoingGameViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    // MARK: - Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
         title = "Ongoing Game"
         navigationItem.largeTitleDisplayMode = .never
         navigationController?.navigationBar.tintColor = .brandBlue
-        
+
         view.backgroundColor = .systemBackground
-        
+
+        setupBindings()
+        setupSubviews()
+        constrainSubviews()
+
+        bottomSheetViewModel.phaseState.currentPhase = .initialNight
+    }
+
+    // MARK: - Setup
+
+    private func setupBindings() {
         viewModel.$gameState
             .receive(on: DispatchQueue.main)
             .sink { [weak self] gameState in
@@ -52,17 +62,28 @@ class OngoingGameViewController: UIViewController {
                 }
             }
             .store(in: &cancellables)
-        
-        setupSubviews()
-        constrainSubviews()
     }
-    
+
     private func setupSubviews() {
         view.addSubview(playerTable)
         playerTable.dataSource = self
         playerTable.delegate = self
+
+        bottomSheet.attach(to: view)
+
+        addChild(bottomSheetVC)
+        bottomSheet.contentView.addSubview(bottomSheetVC.view)
+        bottomSheetVC.didMove(toParent: self)
+
+        bottomSheetVC.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            bottomSheetVC.view.topAnchor.constraint(equalTo: bottomSheet.contentView.topAnchor),
+            bottomSheetVC.view.bottomAnchor.constraint(equalTo: bottomSheet.contentView.bottomAnchor),
+            bottomSheetVC.view.leadingAnchor.constraint(equalTo: bottomSheet.contentView.leadingAnchor),
+            bottomSheetVC.view.trailingAnchor.constraint(equalTo: bottomSheet.contentView.trailingAnchor)
+        ])
     }
-    
+
     private func constrainSubviews() {
         playerTable.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -71,41 +92,28 @@ class OngoingGameViewController: UIViewController {
             playerTable.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             playerTable.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-
-        playerTable.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 220, right: 0)
-
-        timerView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(timerView)
-
-        NSLayoutConstraint.activate([
-            timerView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            timerView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            timerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            timerView.heightAnchor.constraint(equalToConstant: 200)
-        ])
         
-        view.bringSubviewToFront(timerView)
+        playerTable.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 220, right: 0)
     }
-
-    
 }
 
+// MARK: - UITableViewDataSource
+
 extension OngoingGameViewController: UITableViewDataSource {
-    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return 10
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(
-                withIdentifier: PlayerCell.id, for: indexPath)
-                as? PlayerCell
-        else {
-            fatalError("OngoingGameScreenController could not dequeue a PlayerCell.")
+            withIdentifier: PlayerCell.id, for: indexPath
+        ) as? PlayerCell else {
+            fatalError("Could not dequeue PlayerCell.")
         }
 
         cell.viewModel = viewModel
         cell.index = indexPath.row
+
         cell.cancellable = viewModel.$gameState
             .receive(on: DispatchQueue.main)
             .compactMap { $0 }
@@ -114,22 +122,32 @@ extension OngoingGameViewController: UITableViewDataSource {
             .sink { player in
                 cell.configure(for: player)
             }
+
+        cell.currentPhaseCancellable = bottomSheetViewModel.$phaseState
+            .map { $0.currentPhase }
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { phase in
+                cell.currentPhase = phase
+            }
+
+
         cell.isExpanded = indexPath == selectedIndexPath
 
         return cell
     }
-    
+
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return indexPath == selectedIndexPath ? 108 : 56
-    }
-    
+            return indexPath == selectedIndexPath ? 108 : 56
+        }
 }
 
+// MARK: - UITableViewDelegate
+
 extension OngoingGameViewController: UITableViewDelegate {
-    
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         var indexPathsToReload: [IndexPath] = []
-        
+
         if indexPath == selectedIndexPath {
             indexPathsToReload = [indexPath]
             selectedIndexPath = nil
@@ -140,8 +158,7 @@ extension OngoingGameViewController: UITableViewDelegate {
             indexPathsToReload = [indexPath]
             selectedIndexPath = indexPath
         }
-        
+
         tableView.reconfigureRows(at: indexPathsToReload)
     }
-    
 }

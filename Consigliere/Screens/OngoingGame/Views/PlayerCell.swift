@@ -20,12 +20,13 @@ class PlayerCell: UITableViewCell {
     var isExpanded: Bool = false {
         didSet {
             bottomRowScrollView.isHidden = !isExpanded
-            nominateButton.setTitle(isExpanded ? "Nominate" : "", for: .normal)
             if isExpanded {
                 bottomRowScrollView.setContentOffset(.zero, animated: false)
             }
+            updateNominateButtonAppearance()
         }
     }
+
     
     let topRowStack: UIStackView = {
         let stack = UIStackView()
@@ -194,6 +195,27 @@ class PlayerCell: UITableViewCell {
         return button
     }()
     
+    var currentPhase: GamePhase? {
+        didSet {
+            if currentPhase != .discussion {
+                resetNomination()
+            }
+            updateNominateButtonAppearance()
+        }
+    }
+    
+    var currentPhaseCancellable: AnyCancellable?
+    
+    
+    private var isNominated: Bool = false
+
+    func resetNomination() {
+        isNominated = false
+        updateNominateButtonAppearance()
+    }
+
+
+    
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
@@ -208,7 +230,7 @@ class PlayerCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func setupSubviews() {
+     func setupSubviews() {
         contentView.addSubview(topRowStack)
         topRowStack.addArrangedSubview(nicknameWithAccessories)
         nicknameWithAccessories.addArrangedSubview(numberBadge)
@@ -219,6 +241,20 @@ class PlayerCell: UITableViewCell {
         nicknameWithAccessories.setCustomSpacing(4, after: foulsIcon)
         nicknameWithAccessories.addArrangedSubview(techFoulIcon)
         topRowStack.addArrangedSubview(nominateButton)
+        
+        nominateButton.addAction(
+            UIAction { [weak self] _ in
+                guard let self = self, let index = self.index else { return }
+                guard self.currentPhase == .discussion else { return }
+
+                if !self.isNominated {
+                    self.isNominated = true
+                    self.updateNominateButtonAppearance()
+                    print("Player nominated: index = \(index), nickname = \(self.nicknameLabel.text ?? "unknown")")
+                }
+            }, for: .touchUpInside)
+
+        
         contentView.addSubview(bottomRowScrollView)
         bottomRowScrollView.addSubview(bottomRowStack)
         for view in [profileButton, foulsControl, muteButton, techFoulButton, disqualifyButton] {
@@ -269,11 +305,44 @@ class PlayerCell: UITableViewCell {
         techFoulButton.isSelected = player.hasTechFoul
     }
     
+    func updateNominateButtonAppearance() {
+        let isDiscussion = currentPhase == .discussion
+
+        nominateButton.isEnabled = isDiscussion && !isNominated
+
+        var config = nominateButton.configuration ?? UIButton.Configuration.filled()
+        if isNominated {
+            
+            config.baseForegroundColor = .white
+            config.baseBackgroundColor = .systemRed
+            config.title = "Nominated"
+
+            
+            if let hammerImage = UIImage(systemName: "hammer.fill") {
+                let flipped = hammerImage.withHorizontallyFlippedOrientation()
+                config.image = flipped.withTintColor(.red, renderingMode: .alwaysOriginal)
+            }
+        } else {
+            
+            config.baseForegroundColor = isDiscussion ? .systemIndigo : .systemGray2
+            config.baseBackgroundColor = .ghostWhite
+            config.title = isDiscussion ? "Nominate" : ""
+            config.image = UIImage(systemName: "hammer.fill")?.withTintColor(isDiscussion ? .systemIndigo : .systemGray2, renderingMode: .alwaysOriginal)
+        }
+
+        nominateButton.configuration = config
+    }
+
+
+    
     override func prepareForReuse() {
         super.prepareForReuse()
         cancellable?.cancel()
+        currentPhaseCancellable?.cancel()
         cancellable = nil
+        currentPhaseCancellable = nil
     }
+
     
 }
 

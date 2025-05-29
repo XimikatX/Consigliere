@@ -5,9 +5,13 @@
 //  Created by Aleksey Boris on 20/05/2025.
 //
 
-
-struct GameState : Codable {
+struct GameState: Codable {
     var players: [Player]
+    var phaseState: GamePhaseState = .init()
+
+    mutating func advancePhase() {
+        phaseState.advance()
+    }
     
     mutating func assignFoulToPlayer(at index: Int) {
         players[index].foulsCount += 1
@@ -30,5 +34,14 @@ struct GameState : Codable {
     mutating func toggleTechFoulForPlayer(at index: Int) {
         players[index].hasTechFoul.toggle()
     }
-    
 }
+extension GameState {
+    var alivePlayers: [Player] {
+        players.filter { $0.isAlive }
+    }
+    
+    var alivePlayersCount: Int {
+        alivePlayers.count
+    }
+}
+

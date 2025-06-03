@@ -10,7 +10,7 @@ import Combine
 
 class BottomSheetViewController: UIViewController {
     
-    private let viewModel: BottomSheetViewModel
+    private let viewModel: OngoingGameViewModel
     private var cancellables = Set<AnyCancellable>()
     
     private let titleLabel: UILabel = {
@@ -23,7 +23,7 @@ class BottomSheetViewController: UIViewController {
     
     private let timerView = TimerView()
     
-    init(viewModel: BottomSheetViewModel) {
+    init(viewModel: OngoingGameViewModel) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
@@ -37,15 +37,39 @@ class BottomSheetViewController: UIViewController {
         view.backgroundColor = .clear
         setupBindings()
     }
+    
+    var onContentHeightUpdate: ((CGFloat) -> Void)?
+    
+
+
+
 
     private func setupBindings() {
-        viewModel.$phaseState
-            .map { $0.currentPhase }
+        viewModel.$gameState
+            .compactMap { $0?.phaseState.currentPhase }
             .removeDuplicates()
             .sink { [weak self] phase in
                 self?.updateUI(for: phase)
             }
             .store(in: &cancellables)
+        viewModel.$gameState
+            .compactMap { $0?.nominatedPlayerIndices }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] nominatedIndices in
+                print("🔥 nominated updated: \(nominatedIndices)")
+                print("📦 discussionView is: \(String(describing: self?.discussionView))")
+                self?.discussionView?.updateNominatedPlayers(nominatedIndices)
+            }
+            .store(in: &cancellables)
+        viewModel.$gameState
+            .compactMap { $0?.nominatedPlayerIndices }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] nominatedIndices in
+                self?.discussionView?.updateNominatedPlayers(nominatedIndices)
+                self?.votingView?.updateNominatedPlayers(nominatedIndices)
+            }
+            .store(in: &cancellables)
+
     }
     
     private func updateUI(for phase: GamePhase) {
@@ -53,14 +77,17 @@ class BottomSheetViewController: UIViewController {
     }
 
     private func configureContent(for phase: GamePhase) {
-        // Удаляем все подвиды
         view.subviews.forEach { $0.removeFromSuperview() }
 
         switch phase {
         case .initialNight:
             configureInitialNight()
         case .discussion:
-                configureDiscussionPhase()
+            configureDiscussionPhase()
+        case .voting:
+            configureVotingPhase()
+        case .night:
+            configureNightPhase()
         default:
             break
         }
@@ -101,6 +128,10 @@ class BottomSheetViewController: UIViewController {
         view.addSubview(titleLabel)
         view.addSubview(timerView)
         view.addSubview(nextPhaseButton)
+        
+        for player in viewModel.gameState!.alivePlayers {
+            print("👤 \(player.nickname): \(player.role), isAlive: \(player.isAlive)")
+        }
 
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
@@ -118,29 +149,164 @@ class BottomSheetViewController: UIViewController {
             nextPhaseButton.heightAnchor.constraint(equalToConstant: 40),
             nextPhaseButton.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -16)
         ])
+        
+        DispatchQueue.main.async {
+            let contentHeight = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
+            self.onContentHeightUpdate?(contentHeight)
+        }
+
     }
 
 
     @objc private func handleNextPhase() {
         viewModel.advancePhase()
     }
+    
+    private var discussionView: DiscussionPhaseView? = nil
+    private var votingView: VotingPhaseView? = nil
+
 
     private func configureDiscussionPhase() {
-        
-        let discussionView = DiscussionPhaseView(totalPlayers: 10)
-        discussionView.translatesAutoresizingMaskIntoConstraints = false
-        discussionView.onNextPhase = { [weak self] in
+        guard let gameState = viewModel.gameState else { return }
+
+        let alivePlayers = gameState.alivePlayers
+        let aliveIndices = alivePlayers.map { $0.index }
+
+        let startingIndex = gameState.discussionStartingPlayerIndex
+
+        let discussion = DiscussionPhaseView(alivePlayerIndices: aliveIndices, startingPlayerIndex: startingIndex)
+
+        discussionView = discussion
+        discussion.translatesAutoresizingMaskIntoConstraints = false
+
+        discussion.onNextPhase = { [weak self] in
             self?.viewModel.advancePhase()
         }
 
-        view.addSubview(discussionView)
+        view.addSubview(discussion)
 
         NSLayoutConstraint.activate([
-            discussionView.topAnchor.constraint(equalTo: view.topAnchor),
-            discussionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            discussionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            discussionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            discussion.topAnchor.constraint(equalTo: view.topAnchor),
+            discussion.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            discussion.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            discussion.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+
+        if let nominated = viewModel.gameState?.nominatedPlayerIndices {
+            discussion.updateNominatedPlayers(nominated)
+        }
+        
+        DispatchQueue.main.async {
+            let contentHeight = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
+            self.onContentHeightUpdate?(contentHeight)
+        }
     }
+
+
+    
+    
+    private func configureVotingPhase() {
+        let votingView = VotingPhaseView()
+
+        votingView.onNextPhase = { [weak self] in
+            self?.viewModel.advancePhase()
+        }
+        
+        votingView.onPlayerVotedOut = { [weak self] playerIndex in
+            self?.viewModel.killPlayer(at: playerIndex)
+            print("Player \(playerIndex + 1) has been voted out and is now dead.")
+            
+            
+            self?.viewModel.checkForGameEnd { [weak self] result in
+                self?.presentGameOverAlert(result: result)
+            }
+            
+        }
+
+
+        votingView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(votingView)
+
+        NSLayoutConstraint.activate([
+            votingView.topAnchor.constraint(equalTo: view.topAnchor),
+            votingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            votingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            votingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        // Передаём текущих номинантов
+        if let nominated = viewModel.gameState?.nominatedPlayerIndices {
+            print("🟦 configureVotingPhase: nominated = \(nominated)")
+            votingView.updateNominatedPlayers(nominated)
+        }
+        
+        DispatchQueue.main.async {
+            let contentHeight = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
+            self.onContentHeightUpdate?(contentHeight)
+        }
+
+    }
+
+    private func configureNightPhase() {
+        guard let alivePlayers = viewModel.gameState?.alivePlayers else { return }
+
+        let nightView = NightPhaseView(alivePlayers: alivePlayers)
+        nightView.translatesAutoresizingMaskIntoConstraints = false
+
+        nightView.onNext = { [weak self] selectedIndex in
+            self?.viewModel.mafiaKill(playerIndex: selectedIndex)
+            self?.viewModel.checkForGameEnd { [weak self] result in
+                self?.presentGameOverAlert(result: result)
+            }
+            self?.viewModel.advancePhase()
+        }
+
+        view.addSubview(nightView)
+
+        NSLayoutConstraint.activate([
+            nightView.topAnchor.constraint(equalTo: view.topAnchor),
+            nightView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            nightView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            nightView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        DispatchQueue.main.async {
+            let contentHeight = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
+            self.onContentHeightUpdate?(contentHeight)
+        }
+
+    }
+    
+    private func presentGameOverAlert(result: GameState.GameResult) {
+        let title = "Game Over"
+        let message: String
+
+        switch result {
+        case .citizenWin:
+            message = "Citizens win!"
+        case .mafiaWin:
+            message = "Mafia wins!"
+        case .ongoing:
+            return
+        }
+
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Back to Home screen", style: .default) { [weak self] _ in
+            self?.viewModel.clearGameState()
+            self?.navigateToHomeScreen()
+        })
+
+        present(alert, animated: true)
+    }
+    
+    private func navigateToHomeScreen() {
+        navigationController?.popToRootViewController(animated: true)
+    }
+
+
+
+
+
+
 
 }

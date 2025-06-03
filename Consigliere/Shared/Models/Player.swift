@@ -16,17 +16,17 @@ enum Role: String, CaseIterable, Codable {
 
 struct Player : Equatable, Codable {
     let index: Int
-    let nickname: String
-    let role: Role?
-    let isAlive: Bool
+    var nickname: String
+    var role: Role
+    var isAlive: Bool
     var foulsCount: Int = 0
     var isMuted: Bool = false
     var hasTechFoul: Bool = false
     
-    init(index: Int, nickname: String, role: Role? = nil) {
+    init(index: Int, nickname: String, role: Role) {
         self.index = index
         self.nickname = nickname
-        self.role = nil
+        self.role = role
         self.isAlive = true
     }
 }

@@ -10,6 +10,7 @@ import Foundation
 protocol GameStateRepository {
     func loadGameState(completion: @escaping (Result<GameState?, Error>) -> Void)
     func saveGameState(gameState: GameState, completion: @escaping (Result<Void, Error>) -> Void)
+    func clearGameState()
 }
 
 
@@ -30,6 +31,10 @@ class InMemoryGameStateRepository : GameStateRepository {
         completion(.success(()))
     }
     
+    func clearGameState() {
+        self.gameState = mockGameState()
+    }
+    
 }
 
 
@@ -40,7 +45,8 @@ func mockGameState() -> GameState {
     ]
     return GameState(
         players: playerNicknames.enumerated().map { index, nickname in
-                .init(index: index, nickname: nickname)
+                .init(index: index, nickname: nickname, role: .citizen)
         }
     )
 }
+ 

@@ -1,22 +1,28 @@
 import UIKit
 
 final class DiscussionPhaseView: UIView {
-
     private let titleLabel = UILabel()
     private let timerView = TimerView()
     private let nextButton = UIButton(type: .system)
     private let previousButton = UIButton(type: .system)
-    
+    private let nominatedContainerStackView = UIStackView()
+    private let nominatedTitleLabel = UILabel()
+    private let nominatedPlayersStackView = UIStackView()
+    private let noNominationsLabel = UILabel()
+
     private var currentPlayerIndex = 0
-    private let totalPlayers: Int
+    private let alivePlayerIndices: [Int]
     var onNextPhase: (() -> Void)?
 
-    init(totalPlayers: Int) {
-        self.totalPlayers = totalPlayers
+    init(alivePlayerIndices: [Int], startingPlayerIndex: Int) {
+        let rotatedIndices = Self.rotatedAliveIndices(alivePlayerIndices, startingFrom: startingPlayerIndex)
+        self.alivePlayerIndices = rotatedIndices
         super.init(frame: .zero)
         setupView()
         updateUI()
     }
+
+
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -36,6 +42,37 @@ final class DiscussionPhaseView: UIView {
         // Previous button
         configureButton(previousButton, title: "Previous", color: .systemGray, systemImage: "arrow.left", isTrailing: false)
         previousButton.addTarget(self, action: #selector(previousTapped), for: .touchUpInside)
+        
+        
+        // Конфиг заголовка "Nominated:"
+        nominatedTitleLabel.text = "Nominated:"
+        nominatedTitleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        nominatedTitleLabel.textColor = .label
+
+        // Конфиг бейджей
+        nominatedPlayersStackView.axis = .horizontal
+        nominatedPlayersStackView.alignment = .center
+        nominatedPlayersStackView.spacing = 8
+
+        // Вертикальный контейнер для заголовка и бейджей
+        nominatedContainerStackView.axis = .vertical
+        nominatedContainerStackView.spacing = 4
+        nominatedContainerStackView.alignment = .leading
+        nominatedContainerStackView.translatesAutoresizingMaskIntoConstraints = false
+
+        nominatedContainerStackView.addArrangedSubview(nominatedTitleLabel)
+        nominatedContainerStackView.addArrangedSubview(nominatedPlayersStackView)
+        addSubview(nominatedContainerStackView)
+
+        // Лейбл для случая без номинантов
+        noNominationsLabel.text = "No nominated players"
+        noNominationsLabel.font = .systemFont(ofSize: 16)
+        noNominationsLabel.textColor = .secondaryLabel
+        noNominationsLabel.textAlignment = .center
+        noNominationsLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(noNominationsLabel)
+
+
 
         addSubview(titleLabel)
         addSubview(timerView)
@@ -51,8 +88,15 @@ final class DiscussionPhaseView: UIView {
             titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 10),
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            
+            nominatedContainerStackView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            nominatedContainerStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            nominatedContainerStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            noNominationsLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            noNominationsLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            noNominationsLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
 
-            timerView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            timerView.topAnchor.constraint(equalTo: nominatedContainerStackView.bottomAnchor, constant: 16),
             timerView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             timerView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
             timerView.heightAnchor.constraint(equalToConstant: 200),
@@ -96,9 +140,10 @@ final class DiscussionPhaseView: UIView {
     }
 
     private func updateUI() {
-        timerView.setSpeechLabel(text: "Player \(currentPlayerIndex + 1)")
+        let playerNumber = alivePlayerIndices[currentPlayerIndex] + 1
+        timerView.setSpeechLabel(text: "Player \(playerNumber)")
 
-        let isLastPlayer = currentPlayerIndex == totalPlayers - 1
+        let isLastPlayer = currentPlayerIndex == alivePlayerIndices.count - 1
         let nextTitle = isLastPlayer ? "Next Phase" : "Next"
         let nextColor = isLastPlayer ? UIColor.systemIndigo : UIColor.systemGray
 
@@ -108,8 +153,42 @@ final class DiscussionPhaseView: UIView {
         configureButton(previousButton, title: "Previous", color: .systemGray, systemImage: "arrow.left", isTrailing: false)
     }
 
+    
+    func updateNominatedPlayers(_ indices: [Int]?) {
+        nominatedPlayersStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        let hasNominations = indices != nil && !(indices?.isEmpty ?? true)
+
+        nominatedContainerStackView.isHidden = !hasNominations
+        noNominationsLabel.isHidden = hasNominations
+
+        guard let indices = indices, !indices.isEmpty else { return }
+
+        for index in indices {
+            let badge = NumberBadge()
+            badge.setNumber(index + 1)
+            nominatedPlayersStackView.addArrangedSubview(badge)
+        }
+    }
+    
+    private static func rotatedAliveIndices(_ indices: [Int], startingFrom startIndex: Int) -> [Int] {
+        guard !indices.isEmpty else { return [] }
+
+        if let startPosition = indices.firstIndex(where: { $0 >= startIndex }) {
+            let head = indices[startPosition..<indices.count]
+            let tail = indices[0..<startPosition]
+            return Array(head + tail)
+        } else {
+            return indices
+        }
+    }
+
+
+
+
+
     @objc private func nextTapped() {
-        if currentPlayerIndex < totalPlayers - 1 {
+        if currentPlayerIndex < alivePlayerIndices.count - 1 {
             currentPlayerIndex += 1
             updateUI()
         } else {
@@ -123,4 +202,5 @@ final class DiscussionPhaseView: UIView {
             updateUI()
         }
     }
+
 }

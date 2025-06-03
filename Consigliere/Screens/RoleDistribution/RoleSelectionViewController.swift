@@ -64,8 +64,20 @@ class RoleSelectionViewController: UIViewController {
     }
 
     @objc private func onStartTapped() {
-        onStartGame?()
+        for (index, role) in viewModel.selectedRoles.enumerated() {
+            print("👤 Игрок \(index + 1): \(viewModel.playerNicknames[index]) — роль: \(viewModel.selectedRoles[index])")
+        }
+
+        let gameState = GameState(players: viewModel.players)
+
+        viewModel.repository.saveGameState(gameState: gameState) { _ in
+            DispatchQueue.main.async {
+                self.onStartGame?()
+            }
+        }
     }
+
+
 
     private func validateRoles(_ roles: [Role?]) {
         let counts = Dictionary(grouping: roles.compactMap { $0 }, by: { $0 }).mapValues { $0.count }

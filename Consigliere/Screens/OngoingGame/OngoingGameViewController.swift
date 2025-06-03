@@ -16,9 +16,7 @@ class OngoingGameViewController: UIViewController {
     private var selectedIndexPath: IndexPath?
 
     
-    private lazy var bottomSheet = BottomSheetView()
-    private let bottomSheetViewModel = BottomSheetViewModel()
-    private lazy var bottomSheetVC = BottomSheetViewController(viewModel: bottomSheetViewModel)
+
 
 
     // MARK: - Init
@@ -31,6 +29,11 @@ class OngoingGameViewController: UIViewController {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    private lazy var bottomSheet = BottomSheetView()
+
+    
+    private lazy var bottomSheetVC = BottomSheetViewController(viewModel: viewModel)
 
     // MARK: - Lifecycle
 
@@ -47,7 +50,7 @@ class OngoingGameViewController: UIViewController {
         setupSubviews()
         constrainSubviews()
 
-        bottomSheetViewModel.phaseState.currentPhase = .initialNight
+        //bottomSheetViewModel.gameState!.phaseState.currentPhase = .initialNight
     }
 
     // MARK: - Setup
@@ -74,6 +77,10 @@ class OngoingGameViewController: UIViewController {
         addChild(bottomSheetVC)
         bottomSheet.contentView.addSubview(bottomSheetVC.view)
         bottomSheetVC.didMove(toParent: self)
+        
+        bottomSheetVC.onContentHeightUpdate = { [weak self] height in
+            self?.bottomSheet.updateHeight(to: height)
+        }
 
         bottomSheetVC.view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -123,8 +130,8 @@ extension OngoingGameViewController: UITableViewDataSource {
                 cell.configure(for: player)
             }
 
-        cell.currentPhaseCancellable = bottomSheetViewModel.$phaseState
-            .map { $0.currentPhase }
+        cell.currentPhaseCancellable = viewModel.$gameState
+            .map { $0?.phaseState.currentPhase }
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { phase in

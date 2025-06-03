@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import Combine
 
 class RoleSelectionCell: UITableViewCell {
     static let id = "RoleAssignmentCell"

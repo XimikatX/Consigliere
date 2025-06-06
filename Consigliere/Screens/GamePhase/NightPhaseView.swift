@@ -141,6 +141,7 @@ final class NightPhaseView: UIView {
         nextButton.alpha = 1.0
     }
 
+
     @objc private func nextButtonTapped() {
         onNext?(selectedIndex)
     }

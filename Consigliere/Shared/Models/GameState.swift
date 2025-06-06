@@ -10,6 +10,9 @@ struct GameState: Codable {
     var phaseState: GamePhaseState = .init()
     var nominatedPlayerIndices: [Int] = []
     var discussionStartingPlayerIndex: Int = 0
+    
+
+
 
 
     mutating func advancePhase() {
@@ -18,9 +21,11 @@ struct GameState: Codable {
             }
         phaseState.advance()
         
-        if phaseState.currentPhase == .voting {
-                updateDiscussionStartingPlayerIndex()
-        }
+//        if phaseState.currentPhase == .discussion{
+//                updateDiscussionStartingPlayerIndex()
+//        }
+//        
+
     }
     
     mutating func assignFoulToPlayer(at index: Int) {
@@ -59,7 +64,6 @@ struct GameState: Codable {
     mutating func updateDiscussionStartingPlayerIndex() {
         let totalPlayers = players.count
         var offset = 1
-
         while offset <= totalPlayers {
             let nextIndex = (discussionStartingPlayerIndex + offset) % totalPlayers
             if players[nextIndex].isAlive {
@@ -110,7 +114,6 @@ extension GameState {
         self.players = players.map { player in
             var copy = player
             copy.isAlive = true
-            // Сохраняем роль игрока, если она была установлена
             copy.role = player.role
             return copy
         }

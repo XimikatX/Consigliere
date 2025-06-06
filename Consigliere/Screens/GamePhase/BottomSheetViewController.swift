@@ -169,35 +169,37 @@ class BottomSheetViewController: UIViewController {
     private func configureDiscussionPhase() {
         guard let gameState = viewModel.gameState else { return }
 
-        let alivePlayers = gameState.alivePlayers
-        let aliveIndices = alivePlayers.map { $0.index }
+        let aliveIndices = gameState.alivePlayers.map { $0.index }
+        let currentIndex = gameState.discussionStartingPlayerIndex
+        let killedIndex = viewModel.killedLastNightPlayerIndex
+        let discussion = DiscussionPhaseView(
+            alivePlayerIndices: aliveIndices,
+            startingPlayerIndex: currentIndex,
+            killedLastNightPlayerIndex: killedIndex
+        )
+        
+        print("🩸 Player killed last night: at index \(killedIndex ?? -1)")
+        
 
-        let startingIndex = gameState.discussionStartingPlayerIndex
-
-        let discussion = DiscussionPhaseView(alivePlayerIndices: aliveIndices, startingPlayerIndex: startingIndex)
+        
 
         discussionView = discussion
         discussion.translatesAutoresizingMaskIntoConstraints = false
-
+        
         discussion.onNextPhase = { [weak self] in
             self?.viewModel.advancePhase()
         }
-
         view.addSubview(discussion)
 
         NSLayoutConstraint.activate([
             discussion.topAnchor.constraint(equalTo: view.topAnchor),
             discussion.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             discussion.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            discussion.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            discussion.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor)
         ])
 
-        if let nominated = viewModel.gameState?.nominatedPlayerIndices {
-            discussion.updateNominatedPlayers(nominated)
-        }
-        
         DispatchQueue.main.async {
-            let contentHeight = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
+            let contentHeight = discussion.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
             self.onContentHeightUpdate?(contentHeight)
         }
     }
@@ -255,6 +257,15 @@ class BottomSheetViewController: UIViewController {
 
         nightView.onNext = { [weak self] selectedIndex in
             self?.viewModel.mafiaKill(playerIndex: selectedIndex)
+            self?.viewModel.killedLastNightPlayerIndex = selectedIndex
+            if let killedIndex = self?.viewModel.killedLastNightPlayerIndex,
+               let player = self?.viewModel.gameState?.players[safe: killedIndex] {
+                print("🩸 Player killed last night: \(player.nickname) at index \(killedIndex)")
+            } else {
+                print("⚠️ Failed to retrieve killed player info")
+            }
+
+            self?.viewModel.gameState?.updateDiscussionStartingPlayerIndex()
             self?.viewModel.checkForGameEnd { [weak self] result in
                 self?.presentGameOverAlert(result: result)
             }

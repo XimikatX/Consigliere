@@ -34,6 +34,18 @@ class OngoingGameViewController: UIViewController {
 
     
     private lazy var bottomSheetVC = BottomSheetViewController(viewModel: viewModel)
+    
+    private lazy var showRolesButton: UIBarButtonItem = {
+        let button = UIBarButtonItem(
+            image: UIImage(systemName: "eye"),
+            style: .plain,
+            target: self,
+            action: #selector(toggleRolesVisibility)
+        )
+        button.tintColor = .systemIndigo
+        return button
+    }()
+
 
     // MARK: - Lifecycle
 
@@ -43,6 +55,8 @@ class OngoingGameViewController: UIViewController {
         title = "Ongoing Game"
         navigationItem.largeTitleDisplayMode = .never
         navigationController?.navigationBar.tintColor = .brandBlue
+        
+        navigationItem.rightBarButtonItem = showRolesButton
 
         view.backgroundColor = .systemBackground
 
@@ -147,6 +161,29 @@ extension OngoingGameViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
             return indexPath == selectedIndexPath ? 108 : 56
         }
+    
+    @objc private func toggleRolesVisibility() {
+        viewModel.areRolesVisible.toggle()
+        
+        // Изменим иконку и цвет кнопки
+        let imageName = viewModel.areRolesVisible ? "eye.slash" : "eye"
+        showRolesButton.image = UIImage(systemName: imageName)
+        showRolesButton.tintColor = viewModel.areRolesVisible ? .systemRed : .systemIndigo
+        
+        // Обновим только видимые ячейки без анимации
+        UIView.performWithoutAnimation {
+            for indexPath in playerTable.indexPathsForVisibleRows ?? [] {
+                if let cell = playerTable.cellForRow(at: indexPath) as? PlayerCell {
+                    let player = viewModel.gameState?.players[indexPath.row]
+                    cell.configure(for: player!)
+                }
+            }
+        }
+    }
+
+
+
+
 }
 
 // MARK: - UITableViewDelegate

@@ -116,6 +116,17 @@ class PlayerCell: UITableViewCell {
         return button
     }()
     
+    let roleIconImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.tintColor = .label
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
+        imageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+        return imageView
+    }()
+
+    
     lazy var foulsControl: FoulCountControl = {
         let control = FoulCountControl()
         control.onMinusButtonTapped = { [weak self] in
@@ -257,6 +268,9 @@ class PlayerCell: UITableViewCell {
         nicknameWithAccessories.setCustomSpacing(4, after: foulsIcon)
         nicknameWithAccessories.addArrangedSubview(techFoulIcon)
         topRowStack.addArrangedSubview(nominateButton)
+        nicknameWithAccessories.addArrangedSubview(roleIconImageView)
+        nicknameWithAccessories.setCustomSpacing(8, after: roleIconImageView)
+
         
         nominateButton.addAction(
             UIAction { [weak self] _ in
@@ -351,6 +365,22 @@ class PlayerCell: UITableViewCell {
             view.isUserInteractionEnabled = player.isAlive
             view.alpha = player.isAlive ? 1.0 : 0.5
         }
+        
+        if viewModel?.areRolesVisible == true {
+                roleIconImageView.isHidden = false
+                switch player.role {
+                case .mafia:
+                    roleIconImageView.image = UIImage(named: "mafia")
+                case .sheriff:
+                    roleIconImageView.image = UIImage(named: "sheriff")
+                case .don:
+                    roleIconImageView.image = UIImage(named: "don")
+                case .citizen:
+                    roleIconImageView.isHidden = true
+                }
+            } else {
+                roleIconImageView.isHidden = true
+            }
 
     }
     

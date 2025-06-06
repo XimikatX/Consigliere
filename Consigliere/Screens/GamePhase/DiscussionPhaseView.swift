@@ -9,18 +9,29 @@ final class DiscussionPhaseView: UIView {
     private let nominatedTitleLabel = UILabel()
     private let nominatedPlayersStackView = UIStackView()
     private let noNominationsLabel = UILabel()
+    
+    private let killedLastNightPlayerIndex: Int?
+    private var start = 0
+
 
     private var currentPlayerIndex = 0
     private let alivePlayerIndices: [Int]
     var onNextPhase: (() -> Void)?
 
-    init(alivePlayerIndices: [Int], startingPlayerIndex: Int) {
+    init(alivePlayerIndices: [Int], startingPlayerIndex: Int, killedLastNightPlayerIndex: Int?) {
         let rotatedIndices = Self.rotatedAliveIndices(alivePlayerIndices, startingFrom: startingPlayerIndex)
         self.alivePlayerIndices = rotatedIndices
+        self.killedLastNightPlayerIndex = killedLastNightPlayerIndex
         super.init(frame: .zero)
         setupView()
         updateUI()
     }
+    
+    private var isShowingFinalWords: Bool {
+        return killedLastNightPlayerIndex != nil && currentPlayerIndex == 0
+    }
+
+
 
 
 
@@ -140,18 +151,34 @@ final class DiscussionPhaseView: UIView {
     }
 
     private func updateUI() {
-        let playerNumber = alivePlayerIndices[currentPlayerIndex] + 1
+        if isShowingFinalWords {
+            timerView.setSpeechLabel(text: "Final words")
+            configureButton(nextButton, title: "Next", color: .systemGray, systemImage: "arrow.right", isTrailing: true)
+            previousButton.isHidden = true
+            return
+        }
+
+        let aliveIndex = currentPlayerIndex - (killedLastNightPlayerIndex != nil ? 1 : 0)
+
+        guard aliveIndex >= 0 && aliveIndex < alivePlayerIndices.count else { return }
+
+        let playerIndex = alivePlayerIndices[aliveIndex]
+        let playerNumber = playerIndex + 1
         timerView.setSpeechLabel(text: "Player \(playerNumber)")
 
-        let isLastPlayer = currentPlayerIndex == alivePlayerIndices.count - 1
+        let totalCount = alivePlayerIndices.count + (killedLastNightPlayerIndex != nil ? 1 : 0)
+        let isLastPlayer = currentPlayerIndex == totalCount - 1
+        
         let nextTitle = isLastPlayer ? "Next Phase" : "Next"
         let nextColor = isLastPlayer ? UIColor.systemIndigo : UIColor.systemGray
-
         configureButton(nextButton, title: nextTitle, color: nextColor, systemImage: "arrow.right", isTrailing: true)
 
         previousButton.isHidden = currentPlayerIndex == 0
         configureButton(previousButton, title: "Previous", color: .systemGray, systemImage: "arrow.left", isTrailing: false)
     }
+
+
+
 
     
     func updateNominatedPlayers(_ indices: [Int]?) {
@@ -188,14 +215,16 @@ final class DiscussionPhaseView: UIView {
 
 
     @objc private func nextTapped() {
-        if currentPlayerIndex < alivePlayerIndices.count - 1 {
+        let totalCount = alivePlayerIndices.count + (killedLastNightPlayerIndex != nil ? 1 : 0)
+        if currentPlayerIndex < totalCount - 1 {
             currentPlayerIndex += 1
+            start = 1
             updateUI()
         } else {
             onNextPhase?()
         }
     }
-
+    
     @objc private func previousTapped() {
         if currentPlayerIndex > 0 {
             currentPlayerIndex -= 1
@@ -203,4 +232,7 @@ final class DiscussionPhaseView: UIView {
         }
     }
 
+
 }
+
+

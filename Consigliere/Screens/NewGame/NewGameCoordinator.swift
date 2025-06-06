@@ -23,7 +23,7 @@ class NewGameCoordinator {
                 
         let repository = InMemoryGameStateRepository(gameState: gameState)
                 
-        let viewModel = NewGameViewModel(nicknames: mockPlayerNicknames(), repository: repository )
+        let viewModel = NewGameViewModel( repository: repository )
         let playerInputVC = PlayerInputViewController(viewModel: viewModel)
         playerInputVC.onCancel = onCancel
         playerInputVC.onDone = { [weak self] in

@@ -46,7 +46,7 @@ class NewGameViewModel {
 
 func mockPlayerNicknames() -> [String] {
     return [
-        "", "Kangaroo", "Bumblebee With Very Long Nickname Which Won't Fit", "Cheetah", "Giraffe",
+        "Me", "Kangaroo", "Bumblebee With Very Long Nickname Which Won't Fit", "Cheetah", "Giraffe",
         "Ferret", "Elephant", "Octopus", "Penguin", "Chinchilla"
     ]
 }

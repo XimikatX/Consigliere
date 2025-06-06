@@ -12,6 +12,11 @@ class OngoingGameViewModel {
     let gameStateRepository: GameStateRepository
     
     @Published var gameState: GameState?
+    
+    @Published var areRolesVisible = false
+    
+    var killedLastNightPlayerIndex: Int?
+
 
     
     init(repository: GameStateRepository) {

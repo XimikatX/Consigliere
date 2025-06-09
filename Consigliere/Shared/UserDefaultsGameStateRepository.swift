@@ -37,4 +37,7 @@ class UserDefaultsGameStateRepository : GameStateRepository {
         }
     }
     
+    func clearGameState() {
+            UserDefaults.standard.removeObject(forKey: gameStateKey)
+        }
 }

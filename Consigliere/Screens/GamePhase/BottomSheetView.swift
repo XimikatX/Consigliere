@@ -17,6 +17,9 @@ class BottomSheetView: UIView {
     private var collapsedY: CGFloat = 0
     private var expandedY: CGFloat = 0
     private var lastPanTranslation: CGFloat = 0
+    
+    private var heightConstraint: NSLayoutConstraint!
+
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -88,12 +91,13 @@ class BottomSheetView: UIView {
         expandedY = view.bounds.height / 1.8
 
         topConstraint = topAnchor.constraint(equalTo: view.topAnchor, constant: collapsedY)
+        heightConstraint = heightAnchor.constraint(greaterThanOrEqualToConstant: collapsedY)
 
         NSLayoutConstraint.activate([
             topConstraint,
             leadingAnchor.constraint(equalTo: view.leadingAnchor),
             trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            heightAnchor.constraint(equalToConstant: view.bounds.height) 
+            heightConstraint
         ])
 
         view.layoutIfNeeded()
@@ -118,4 +122,11 @@ class BottomSheetView: UIView {
     var contentView: UIView {
         return contentContainer
     }
+    
+    func updateHeight(to contentHeight: CGFloat) {
+        let newHeight = max(contentHeight + 40, collapsedY) 
+        heightConstraint.constant = newHeight
+        superview?.layoutIfNeeded()
+    }
+
 }

@@ -24,10 +24,20 @@ class NumberBadge: UIView {
         return label
     }()
 
+    private var isMiss: Bool = false
+
     func setNumber(_ number: Int?) {
         guard let number, (1...10).contains(number) else { return }
         label.text = "\(number)"
         label.transform = number == 10 ? .init(scaleX: 0.85, y: 1) : .identity
+        isMiss = false
+        invalidateIntrinsicContentSize()
+    }
+
+    func setText(_ text: String) {
+        label.text = text
+        isMiss = true
+        invalidateIntrinsicContentSize()
     }
 
     override init(frame: CGRect) {
@@ -50,12 +60,21 @@ class NumberBadge: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-
         layer.cornerRadius = min(bounds.width, bounds.height) / 6
     }
-    
+
     override var intrinsicContentSize: CGSize {
-        .init(width: 28, height: 28)
+        return isMiss
+            ? CGSize(width: 60, height: 28)
+            : CGSize(width: 28, height: 28)
     }
 
+    func setSelected(_ selected: Bool) {
+        backgroundColor = selected ? .systemRed : R.Colors.Label.primary
+    }
+
+    func setGray(_ gray: Bool) {
+        backgroundColor = gray ? .systemGray4 : R.Colors.Label.primary
+        label.textColor = gray ? .systemGray : .white
+    }
 }

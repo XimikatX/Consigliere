@@ -16,9 +16,7 @@ class OngoingGameViewController: UIViewController {
     private var selectedIndexPath: IndexPath?
 
     
-    private lazy var bottomSheet = BottomSheetView()
-    private let bottomSheetViewModel = BottomSheetViewModel()
-    private lazy var bottomSheetVC = BottomSheetViewController(viewModel: bottomSheetViewModel)
+
 
 
     // MARK: - Init
@@ -31,6 +29,23 @@ class OngoingGameViewController: UIViewController {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    private lazy var bottomSheet = BottomSheetView()
+
+    
+    private lazy var bottomSheetVC = BottomSheetViewController(viewModel: viewModel)
+    
+    private lazy var showRolesButton: UIBarButtonItem = {
+        let button = UIBarButtonItem(
+            image: UIImage(systemName: "eye"),
+            style: .plain,
+            target: self,
+            action: #selector(toggleRolesVisibility)
+        )
+        button.tintColor = .systemIndigo
+        return button
+    }()
+
 
     // MARK: - Lifecycle
 
@@ -40,6 +55,8 @@ class OngoingGameViewController: UIViewController {
         title = "Ongoing Game"
         navigationItem.largeTitleDisplayMode = .never
         navigationController?.navigationBar.tintColor = .brandBlue
+        
+        navigationItem.rightBarButtonItem = showRolesButton
 
         view.backgroundColor = .systemBackground
 
@@ -47,7 +64,7 @@ class OngoingGameViewController: UIViewController {
         setupSubviews()
         constrainSubviews()
 
-        bottomSheetViewModel.phaseState.currentPhase = .initialNight
+        //bottomSheetViewModel.gameState!.phaseState.currentPhase = .initialNight
     }
 
     // MARK: - Setup
@@ -74,6 +91,10 @@ class OngoingGameViewController: UIViewController {
         addChild(bottomSheetVC)
         bottomSheet.contentView.addSubview(bottomSheetVC.view)
         bottomSheetVC.didMove(toParent: self)
+        
+        bottomSheetVC.onContentHeightUpdate = { [weak self] height in
+            self?.bottomSheet.updateHeight(to: height)
+        }
 
         bottomSheetVC.view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -123,8 +144,8 @@ extension OngoingGameViewController: UITableViewDataSource {
                 cell.configure(for: player)
             }
 
-        cell.currentPhaseCancellable = bottomSheetViewModel.$phaseState
-            .map { $0.currentPhase }
+        cell.currentPhaseCancellable = viewModel.$gameState
+            .map { $0?.phaseState.currentPhase }
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { phase in
@@ -140,6 +161,29 @@ extension OngoingGameViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
             return indexPath == selectedIndexPath ? 108 : 56
         }
+    
+    @objc private func toggleRolesVisibility() {
+        viewModel.areRolesVisible.toggle()
+        
+        // Изменим иконку и цвет кнопки
+        let imageName = viewModel.areRolesVisible ? "eye.slash" : "eye"
+        showRolesButton.image = UIImage(systemName: imageName)
+        showRolesButton.tintColor = viewModel.areRolesVisible ? .systemRed : .systemIndigo
+        
+        // Обновим только видимые ячейки без анимации
+        UIView.performWithoutAnimation {
+            for indexPath in playerTable.indexPathsForVisibleRows ?? [] {
+                if let cell = playerTable.cellForRow(at: indexPath) as? PlayerCell {
+                    let player = viewModel.gameState?.players[indexPath.row]
+                    cell.configure(for: player!)
+                }
+            }
+        }
+    }
+
+
+
+
 }
 
 // MARK: - UITableViewDelegate

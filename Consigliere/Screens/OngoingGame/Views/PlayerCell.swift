@@ -19,6 +19,11 @@ class PlayerCell: UITableViewCell {
     
     var isExpanded: Bool = false {
         didSet {
+            if isExpanded && !isAlive {
+                isExpanded = false
+                return
+            }
+
             bottomRowScrollView.isHidden = !isExpanded
             if isExpanded {
                 bottomRowScrollView.setContentOffset(.zero, animated: false)
@@ -26,6 +31,7 @@ class PlayerCell: UITableViewCell {
             updateNominateButtonAppearance()
         }
     }
+
 
     
     let topRowStack: UIStackView = {
@@ -74,7 +80,7 @@ class PlayerCell: UITableViewCell {
         return imageView
     }()
     
-    let nominateButton: UIButton = {
+    lazy var nominateButton: UIButton = {
         let button = UIButton(type: .system)
         var config = UIButton.Configuration.forPlayerCell()
         config.image = UIImage(systemName: "hammer.fill")
@@ -109,6 +115,17 @@ class PlayerCell: UITableViewCell {
         button.clipsToBounds = true
         return button
     }()
+    
+    let roleIconImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.tintColor = .label
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
+        imageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+        return imageView
+    }()
+
     
     lazy var foulsControl: FoulCountControl = {
         let control = FoulCountControl()
@@ -208,6 +225,16 @@ class PlayerCell: UITableViewCell {
     
     
     private var isNominated: Bool = false
+    
+    var isAlive: Bool = true {
+        didSet {
+            if !isAlive {
+                isExpanded = false
+            }
+            updateNominateButtonAppearance()
+        }
+    }
+
 
     func resetNomination() {
         isNominated = false
@@ -241,6 +268,9 @@ class PlayerCell: UITableViewCell {
         nicknameWithAccessories.setCustomSpacing(4, after: foulsIcon)
         nicknameWithAccessories.addArrangedSubview(techFoulIcon)
         topRowStack.addArrangedSubview(nominateButton)
+        nicknameWithAccessories.addArrangedSubview(roleIconImageView)
+        nicknameWithAccessories.setCustomSpacing(8, after: roleIconImageView)
+
         
         nominateButton.addAction(
             UIAction { [weak self] _ in
@@ -250,10 +280,10 @@ class PlayerCell: UITableViewCell {
                 if !self.isNominated {
                     self.isNominated = true
                     self.updateNominateButtonAppearance()
-                    print("Player nominated: index = \(index), nickname = \(self.nicknameLabel.text ?? "unknown")")
+                    viewModel?.nominatePlayer(at: index)
                 }
             }, for: .touchUpInside)
-
+         
         
         contentView.addSubview(bottomRowScrollView)
         bottomRowScrollView.addSubview(bottomRowStack)
@@ -290,6 +320,15 @@ class PlayerCell: UITableViewCell {
     }
     
     func configure(for player: Player) {
+
+        isAlive = player.isAlive
+        
+        if !player.isAlive {
+            if isExpanded {
+                isExpanded = false
+            }
+        }
+
         numberBadge.setNumber(player.index + 1)
         nicknameLabel.text = player.nickname 
         if player.foulsCount > 0 {
@@ -303,35 +342,78 @@ class PlayerCell: UITableViewCell {
         muteButton.isEnabled = player.foulsCount == 3
         muteButton.isSelected = player.isMuted
         techFoulButton.isSelected = player.hasTechFoul
+        
+        if player.isAlive {
+            nicknameLabel.attributedText = nil  // сброс стилей
+            nicknameLabel.text = player.nickname // обязательно перезаписать текст
+            nicknameLabel.textColor = R.Colors.Label.primary
+            numberBadge.setGray(false)
+            isUserInteractionEnabled = true
+        } else {
+            let attributed = NSAttributedString(
+                string: player.nickname,
+                attributes: [.strikethroughStyle: NSUnderlineStyle.single.rawValue]
+            )
+            nicknameLabel.attributedText = attributed
+            nicknameLabel.textColor = .systemGray
+            numberBadge.setGray(true)
+            isUserInteractionEnabled = false
+        }
+
+        
+        for view in [profileButton, foulsControl, muteButton, techFoulButton, disqualifyButton, nominateButton] {
+            view.isUserInteractionEnabled = player.isAlive
+            view.alpha = player.isAlive ? 1.0 : 0.5
+        }
+        
+        if viewModel?.areRolesVisible == true {
+                roleIconImageView.isHidden = false
+                switch player.role {
+                case .mafia:
+                    roleIconImageView.image = UIImage(named: "mafia")
+                case .sheriff:
+                    roleIconImageView.image = UIImage(named: "sheriff")
+                case .don:
+                    roleIconImageView.image = UIImage(named: "don")
+                case .citizen:
+                    roleIconImageView.isHidden = true
+                }
+            } else {
+                roleIconImageView.isHidden = true
+            }
+
     }
     
     func updateNominateButtonAppearance() {
         let isDiscussion = currentPhase == .discussion
-
-        nominateButton.isEnabled = isDiscussion && !isNominated
+        let isEnabled = isDiscussion && !isNominated && isAlive
+        nominateButton.isEnabled = isEnabled
 
         var config = nominateButton.configuration ?? UIButton.Configuration.filled()
+
         if isNominated {
-            
             config.baseForegroundColor = .white
             config.baseBackgroundColor = .systemRed
-            config.title = "Nominated"
 
-            
+            config.title = isExpanded ? "Nominated" : ""
+
             if let hammerImage = UIImage(systemName: "hammer.fill") {
                 let flipped = hammerImage.withHorizontallyFlippedOrientation()
                 config.image = flipped.withTintColor(.red, renderingMode: .alwaysOriginal)
             }
         } else {
-            
-            config.baseForegroundColor = isDiscussion ? .systemIndigo : .systemGray2
+            config.baseForegroundColor = isEnabled ? .systemIndigo : .systemGray2
             config.baseBackgroundColor = .ghostWhite
-            config.title = isDiscussion ? "Nominate" : ""
-            config.image = UIImage(systemName: "hammer.fill")?.withTintColor(isDiscussion ? .systemIndigo : .systemGray2, renderingMode: .alwaysOriginal)
+
+            config.title = isExpanded ? "Nominate" : ""
+
+            let iconColor = config.baseForegroundColor ?? .systemGray2
+            config.image = UIImage(systemName: "hammer.fill")?.withTintColor(iconColor, renderingMode: .alwaysOriginal)
         }
 
         nominateButton.configuration = config
     }
+
 
 
     
@@ -341,7 +423,12 @@ class PlayerCell: UITableViewCell {
         currentPhaseCancellable?.cancel()
         cancellable = nil
         currentPhaseCancellable = nil
+        
+        isExpanded = false
+        isAlive = true
+        resetNomination()
     }
+
 
     
 }

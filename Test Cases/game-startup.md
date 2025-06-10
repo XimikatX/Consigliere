@@ -21,6 +21,7 @@ Verify that a user can successfully start a new game.
 
 ### Actual Result
 Ongoing Game screen is shown with correct player names, game starts successfully.
+
 <img width="332" alt="game-startup1" src="https://github.com/user-attachments/assets/9f9b7331-c54d-4eab-ac9a-ffc9962e3d91" />
 <img width="340" alt="game-startup2" src="https://github.com/user-attachments/assets/3cfa86df-00da-4b7f-bda2-b33a6e278390" />
 <img width="335" alt="game-startup3" src="https://github.com/user-attachments/assets/0a50a4c9-7dce-4c30-ae15-530b294d2ec7" />

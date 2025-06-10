@@ -19,10 +19,14 @@ Verify that during the game, the user can view and track the speech time using t
 - The speech timer is visible and accurately tracks the time elapsed or remaining for the player’s speech turn.
 
 ### Actual Result
-- *To be filled in*
+- Speech timer is visible, countdown is working correctly.
+
+<img width="328" alt="speech-timer1" src="https://github.com/user-attachments/assets/509e39c9-fe36-44c5-91a4-099afccccf14" />
+<img width="343" alt="speech-timer2" src="https://github.com/user-attachments/assets/558ba22d-a9ee-4626-a3be-244aea92bd76" />
+
 
 ### Status
-- *Pass/Fail*
+- *Pass*
 
 ### Notes
-- *Additional comments or observations*
+- Timer doesn't reset when clicking next or previous — the remaining time stays the same for all players.

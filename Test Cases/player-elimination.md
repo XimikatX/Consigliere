@@ -19,10 +19,15 @@ Verify that during the voting phase, when a player is selected for elimination, 
 - The selected player is displayed in grayscale, indicating elimination.
 
 ### Actual Result
-- *To be filled in*
+- Selected player is eliminated, displayed in grayscale
+
+<img width="323" alt="player-elimination1" src="https://github.com/user-attachments/assets/2fdaaf26-ac7d-491b-aecb-5468b6f0d4f2" />
+<img width="319" alt="player-elimination2" src="https://github.com/user-attachments/assets/5773bb6e-3f43-4e6b-8838-c7d7cc68f42f" />
+<img width="336" alt="player-elimination3" src="https://github.com/user-attachments/assets/71825116-6f8d-4f30-bf9a-89fdead6b586" />
+
 
 ### Status
-- *Pass/Fail*
+- *Pass*
 
 ### Notes
-- *Additional comments or observations*
+- 

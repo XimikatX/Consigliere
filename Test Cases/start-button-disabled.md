@@ -21,10 +21,14 @@ Verify that the "Start" button remains disabled if a user inputs invalid or inco
 - The "Start" button remains disabled and the user cannot proceed to start the game.
 
 ### Actual Result
-- *To be filled in*
+- The game can start only when all players have been assigned their roles properly.
+
+<img width="336" alt="start-button-disabled1" src="https://github.com/user-attachments/assets/4cb2e006-9e24-40e5-bc75-eba9ad40ed35" />
+<img width="343" alt="start-button-disabled2" src="https://github.com/user-attachments/assets/d5a45815-5dfc-4c73-8f66-373a1db70bde" />
+
 
 ### Status
-- *Pass/Fail*
+- *Pass*
 
 ### Notes
-- *Additional comments or observations*
+- 
